@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OWASP CI/CD Risk Scanner</title>
+</head>
+<body>
+
+  <h1>OWASP CI/CD Risk Scanner</h1>
+
+  <!-- Clone Repo Form -->
+  <h2>Clone Repository</h2>
+  <form id="cloneRepoForm">
+    <label for="repoUrl">Repository URL:</label>
+    <input type="text" id="repoUrl" name="repoUrl" required>
+    <button type="submit">Clone Repository</button>
+  </form>
+  <p id="cloneRepoResult"></p>
+
+  <hr>
+
+  <!-- List of Repositories -->
+  <h2>Available Repositories</h2>
+  <ul id="repoList"></ul>
+
+  <script>
+    document.getElementById('cloneRepoForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const form = event.target;
+      const repoUrl = document.getElementById('repoUrl').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/clone-repo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ repoUrl })
+        });
+
+        const data = await response.json();
+        document.getElementById('cloneRepoResult').innerText = data.message || data.error;
+        fetchRepoList(); // Refresh the list of repos after cloning
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('cloneRepoResult').innerText = 'Failed to clone repository.';
+      }
+    });
+
+
+    // Fetch the list of repositories and render them
+    async function fetchRepoList() {
+      try {
+        const response = await fetch('/list-repos');
+        const repos = await response.json();
+
+        const repoList = document.getElementById('repoList');
+        repoList.innerHTML = '';
+
+        if (repos.length === 0) {
+          repoList.innerHTML = '<li>No repositories found.</li>';
+          return;
+        }
+
+        repos.forEach(repo => {
+          const li = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = `/scan/${encodeURIComponent(repo)}`;
+          link.innerText = repo;
+
+          // Create a delete button
+          const deleteButton = document.createElement('button');
+          deleteButton.innerText = 'Delete';
+          deleteButton.style.marginLeft = '10px';
+          deleteButton.onclick = async () => {
+            if (confirm(`Are you sure you want to delete ${repo}?`)) {
+              await deleteRepo(repo);
+            }
+          };
+
+          li.appendChild(link);
+          li.appendChild(deleteButton);
+          repoList.appendChild(li);
+        });
+      } catch (error) {
+        console.error('Error fetching repos:', error);
+      }
+    }
+
+    // Function to delete a repository
+    async function deleteRepo(repoName) {
+      try {
+        const response = await fetch(`/delete-repo/${encodeURIComponent(repoName)}`, {
+          method: 'DELETE',
+        });
+        const result = await response.json();
+        alert(result.message || result.error);
+
+        // Re-fetch repo list after deletion
+        fetchRepoList();
+      } catch (error) {
+        console.error('Error deleting repo:', error);
+      }
+    }
+
+    // Initial fetch of repositories when page loads
+    fetchRepoList();
+  </script>
+
+</body>
+</html>

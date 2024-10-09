@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1",
+    "simple-git": "^3.27.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "eslint": "eslint ."
+  },
+  "name": "project-3",
+  "version": "1.0.0",
+  "main": "server.js",
+  "devDependencies": {
+    "@eslint/js": "^9.11.1",
+    "eslint": "^9.11.1",
+    "globals": "^15.10.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

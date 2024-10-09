@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Repository</title>
+</head>
+<body>
+  <h1>Scan Repository: <span id="repoName"></span></h1>
+
+  <!-- Form for selecting OWASP risks to check -->
+  <form id="scanForm">
+    <fieldset>
+      <legend>Select OWASP Risks to Check:</legend>
+      <label>
+        <input type="checkbox" name="risks" value="Insecure Dependencies">
+        Insecure Dependencies
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Secrets Management Failures">
+        Secrets Management Failures
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Improper Artifact Integrity">
+        Improper Artifact Integrity Validation
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Weak Credentials">
+        Weak Credentials Management
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Vulnerable Code">
+        Vulnerable Code Execution
+      </label><br>
+      <!-- Add more OWASP risks as needed -->
+    </fieldset>
+
+    <button type="submit">Run Scan</button>
+  </form>
+
+  <p id="scanResult"></p>
+
+  <script>
+    // Get the repoName from the URL
+    const repoName = window.location.pathname.split('/').pop();
+    document.getElementById('repoName').innerText = decodeURIComponent(repoName);
+
+    // Handle form submission
+    document.getElementById('scanForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      const risks = formData.getAll('risks');
+
+      try {
+        const response = await fetch(`/scan/${repoName}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ risks })
+        });
+
+        const result = await response.json();
+        document.getElementById('scanResult').innerText = result.message || result.error;
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('scanResult').innerText = 'Failed to run scan.';
+      }
+    });
+  </script>
+</body>
+</html>
