@@ -5,42 +5,90 @@ const checkVulnerableCodeExecution = async (repoPath) => {
     let output = '';
     let errorOutput = '';
 
-    // Spawn the Semgrep process
-    const proc = spawn('bash', ['-c', `semgrep --config "p/owasp-top-ten"`], {cwd: repoPath});
+    const proc = spawn('bash', ['-c', `semgrep --config "p/config-insecure"`], {cwd: repoPath});
 
-    // Collect stdout data
     proc.stdout.on('data', (chunk) => {
-      output += chunk.toString();  // Collect the output data
+      output += chunk.toString();
     });
 
-    // Collect stderr data (warnings or errors)
     proc.stderr.on('data', (chunk) => {
-      errorOutput += chunk.toString();  // Collect error data
+      errorOutput += chunk.toString();
     });
 
-    // Handle process errors
     proc.on('error', (err) => {
       reject(`Failed to run Semgrep: ${err.message}`);
     });
 
-    // On process exit, handle the results
     proc.on('exit', (code) => {
       if (code === 0) {
-        // Return the full output
         resolve(output.trim());
       } else {
-        // Return stderr if there's a non-zero exit code
         reject(`Semgrep encountered an issue: ${errorOutput.trim()}`);
       }
     });
   });
 };
 
+// CICD-SEC-2: Inadequate Identity and Access Management
+const checkIAMIssues = async (repoPath) => {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let errorOutput = '';
 
+    const proc = spawn('bash', ['-c', `semgrep --config "p/gitleaks"`], {cwd: repoPath});
 
+    proc.stdout.on('data', (chunk) => {
+      output += chunk.toString(); 
+    });
 
+    proc.stderr.on('data', (chunk) => {
+      errorOutput += chunk.toString(); 
+    });
+    proc.on('error', (err) => {
+      reject(`Failed to run Semgrep: ${err.message}`);
+    });
+
+    proc.on('exit', (code) => {
+      if (code === 0) {
+        resolve(output.trim());
+      } else {
+        reject(`Semgrep encountered an issue: ${errorOutput.trim()}`);
+      }
+    });
+  });
+};
+
+// CICD-SEC-4: Poisoned Pipeline Execution
+const checkPipelineConfiguration = async (repoPath) => {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let errorOutput = '';
+
+    const proc = spawn('bash', ['-c', `semgrep --config "p/ci"`], {cwd: repoPath});
+
+    proc.stdout.on('data', (chunk) => {
+      output += chunk.toString(); 
+    });
+
+    proc.stderr.on('data', (chunk) => {
+      errorOutput += chunk.toString(); 
+    });
+    proc.on('error', (err) => {
+      reject(`Failed to run Semgrep: ${err.message}`);
+    });
+
+    proc.on('exit', (code) => {
+      if (code === 0) {
+        resolve(output.trim());
+      } else {
+        reject(`Semgrep encountered an issue: ${errorOutput.trim()}`);
+      }
+    });
+  });
+};
 
 module.exports = {
-    checkVulnerableCodeExecution
-
+    checkVulnerableCodeExecution,
+    checkIAMIssues,
+    checkPipelineConfiguration
 };

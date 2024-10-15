@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scan Repository</title>
 </head>
 <body>
@@ -11,28 +11,47 @@
   <!-- Form for selecting OWASP risks to check -->
   <form id="scanForm">
     <fieldset>
-      <legend>Select OWASP Risks to Check:</legend>
+      <legend>Select OWASP CI/CD Risks to Scan:</legend>
       <label>
-        <input type="checkbox" name="risks" value="Insecure Dependencies">
-        Insecure Dependencies
+        <input type="checkbox" name="risks" value="Insecure Configuration">
+        Insecure Configuration
       </label><br>
       <label>
-        <input type="checkbox" name="risks" value="Secrets Management Failures">
-        Secrets Management Failures
+        <input type="checkbox" name="risks" value="Insufficient IAM">
+        Insufficient Identity and Access Management (IAM)
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Insecure Secrets Management">
+        Insecure Secrets Management
       </label><br>
       <label>
         <input type="checkbox" name="risks" value="Improper Artifact Integrity">
-        Improper Artifact Integrity Validation
+        Improper Artifact Integrity
       </label><br>
       <label>
-        <input type="checkbox" name="risks" value="Weak Credentials">
-        Weak Credentials Management
+        <input type="checkbox" name="risks" value="Insufficient Flow Control Mechanisms">
+        Insufficient Flow Control Mechanisms
       </label><br>
       <label>
-        <input type="checkbox" name="risks" value="Vulnerable Code">
-        Vulnerable Code Execution
+        <input type="checkbox" name="risks" value="Insufficient Verification of Dependencies">
+        Insufficient Verification of Dependencies
       </label><br>
-      <!-- Add more OWASP risks as needed -->
+      <label>
+        <input type="checkbox" name="risks" value="Untrusted Artifact Downloads">
+        Untrusted Artifact Downloads
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Insecure Pipeline Configuration">
+        Insecure Pipeline Configuration
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Insecure System Configuration">
+        Insecure System Configuration
+      </label><br>
+      <label>
+        <input type="checkbox" name="risks" value="Insufficient Logging and Monitoring">
+        Insufficient Logging and Monitoring
+      </label><br>
     </fieldset>
 
     <button type="submit">Run Scan</button>
@@ -42,8 +61,8 @@
 
   <script>
     // Get the repoName from the URL
-    const repoName = window.location.pathname.split('/').pop();
-    document.getElementById('repoName').innerText = decodeURIComponent(repoName);
+    const repoName = decodeURIComponent(window.location.pathname.split('/').pop());
+    document.getElementById('repoName').innerText = repoName;
 
     // Handle form submission
     document.getElementById('scanForm').addEventListener('submit', async function(event) {
@@ -52,8 +71,13 @@
       const formData = new FormData(form);
       const risks = formData.getAll('risks');
 
+      if (risks.length === 0) {
+        alert('Please select at least one risk to scan.');
+        return;
+      }
+
       try {
-        const response = await fetch(`/scan/${repoName}`, {
+        const response = await fetch(`/scan/${encodeURIComponent(repoName)}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -62,7 +86,20 @@
         });
 
         const result = await response.json();
-        document.getElementById('scanResult').innerText = result.message || result.error;
+
+        if (response.ok) {
+          const formattedResults = Object.entries(result.results)
+            .map(([risk, message]) => `<strong>${risk}:</strong> ${message}`)
+            .join('<br>');
+
+          document.getElementById('scanResult').innerHTML = `
+            <h2>Scan Results</h2>
+            ${formattedResults}
+            <p>${result.message}</p>
+          `;
+        } else {
+          document.getElementById('scanResult').innerText = `Error: ${result.error}`;
+        }
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('scanResult').innerText = 'Failed to run scan.';
