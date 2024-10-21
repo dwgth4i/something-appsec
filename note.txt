@@ -1,5 +1,0 @@
-Trien khai them cac tinh nang:
- - Insecure Dependencies
- - Secrets Management Failures
- - Improper Artifact Integrity Validation
- - Weak Credentials Management

@@ -1,110 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scan Repository</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Repository</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Add your own styles if needed -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #results {
+            margin-top: 20px;
+            white-space: pre-wrap; /* Preserves formatting for plain text */
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 <body>
-  <h1>Scan Repository: <span id="repoName"></span></h1>
 
-  <!-- Form for selecting OWASP risks to check -->
-  <form id="scanForm">
-    <fieldset>
-      <legend>Select OWASP CI/CD Risks to Scan:</legend>
-      <label>
-        <input type="checkbox" name="risks" value="Insecure Configuration">
-        Insecure Configuration
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insufficient IAM">
-        Insufficient Identity and Access Management (IAM)
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insecure Secrets Management">
-        Insecure Secrets Management
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Improper Artifact Integrity">
-        Improper Artifact Integrity
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insufficient Flow Control Mechanisms">
-        Insufficient Flow Control Mechanisms
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insufficient Verification of Dependencies">
-        Insufficient Verification of Dependencies
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Untrusted Artifact Downloads">
-        Untrusted Artifact Downloads
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insecure Pipeline Configuration">
-        Insecure Pipeline Configuration
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insecure System Configuration">
-        Insecure System Configuration
-      </label><br>
-      <label>
-        <input type="checkbox" name="risks" value="Insufficient Logging and Monitoring">
-        Insufficient Logging and Monitoring
-      </label><br>
-    </fieldset>
+    <h1>Scan Repository</h1>
+    <form id="scanForm">
+        <label>
+            <input type="checkbox" name="risks" value="Insufficient Credential Hygiene"> Insufficient Credential Hygiene
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insufficient IAM"> Insufficient IAM
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insecure Secrets Management"> Insecure Secrets Management
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Dependency Chain Abuse"> Dependency Chain Abuse
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insufficient Flow Control Mechanisms"> Insufficient Flow Control Mechanisms
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insufficient Verification of Dependencies"> Insufficient Verification of Dependencies
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Untrusted Artifact Downloads"> Untrusted Artifact Downloads
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insecure Pipeline Configuration"> Insecure Pipeline Configuration
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insecure System Configuration"> Insecure System Configuration
+        </label>
+        <label>
+            <input type="checkbox" name="risks" value="Insufficient Logging and Monitoring"> Insufficient Logging and Monitoring
+        </label>
+        <button type="submit">Scan</button>
+    </form>
 
-    <button type="submit">Run Scan</button>
-  </form>
+    <div id="results"></div>
 
-  <p id="scanResult"></p>
+    <script>
+        document.getElementById('scanForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
 
-  <script>
-    // Get the repoName from the URL
-    const repoName = decodeURIComponent(window.location.pathname.split('/').pop());
-    document.getElementById('repoName').innerText = repoName;
+            const formData = new FormData(this);
+            const selectedRisks = Array.from(formData.getAll('risks'));
 
-    // Handle form submission
-    document.getElementById('scanForm').addEventListener('submit', async function(event) {
-      event.preventDefault();
-      const form = event.target;
-      const formData = new FormData(form);
-      const risks = formData.getAll('risks');
+            if (selectedRisks.length === 0) {
+                alert('Please select at least one risk to scan.');
+                return;
+            }
 
-      if (risks.length === 0) {
-        alert('Please select at least one risk to scan.');
-        return;
-      }
+            const repoName = window.location.pathname.split('/').pop(); // Get the repo name from the URL
+            const response = await fetch(`/scan/${repoName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ risks: selectedRisks })
+            });
 
-      try {
-        const response = await fetch(`/scan/${encodeURIComponent(repoName)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ risks })
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerText = ''; // Clear previous results
+
+            if (response.ok) {
+                const resultText = await response.text(); // Expecting plain text response
+                resultsDiv.innerText = resultText; // Display results
+            } else {
+                const errorText = await response.text();
+                resultsDiv.innerText = `Error: ${errorText}`;
+            }
         });
+    </script>
 
-        const result = await response.json();
-
-        if (response.ok) {
-          const formattedResults = Object.entries(result.results)
-            .map(([risk, message]) => `<strong>${risk}:</strong> ${message}`)
-            .join('<br>');
-
-          document.getElementById('scanResult').innerHTML = `
-            <h2>Scan Results</h2>
-            ${formattedResults}
-            <p>${result.message}</p>
-          `;
-        } else {
-          document.getElementById('scanResult').innerText = `Error: ${result.error}`;
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('scanResult').innerText = 'Failed to run scan.';
-      }
-    });
-  </script>
 </body>
 </html>

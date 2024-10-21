@@ -1,3 +1,4 @@
+// Other imports and setup remain the same
 const express = require('express');
 const simpleGit = require('simple-git');
 const path = require('path');
@@ -5,9 +6,11 @@ const fs = require('fs');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const util = require('util');
+
 const { 
   checkIAMIssues,
-  checkPipelineConfiguration
+  checkCredentialHygiene,
+  checkDependencyChainAbuse
  } = require('./scanner');
 
 // Initialize Express app
@@ -38,17 +41,17 @@ app.post('/clone-repo', async (req, res) => {
 
   try {
     if (fs.existsSync(repoPath)) {
-      return res.status(400).json({ error: `Repository "${repoName}" already exists.` });
+      return res.status(400).send(`Repository "${repoName}" already exists.`);
     }
 
     console.log(`Cloning repo from ${repoUrl} to ${repoPath}`);
     await git.clone(repoUrl, repoPath);
     console.log(`Cloned repo to ${repoPath}`);
 
-    res.json({ message: `Repository "${repoName}" cloned successfully.` });
+    res.send(`Repository "${repoName}" cloned successfully.`);
   } catch (err) {
     console.error('Failed to clone repo:', err);
-    res.status(500).json({ error: 'Failed to clone repository.' });
+    res.status(500).send('Failed to clone repository.');
   }
 });
 
@@ -57,27 +60,29 @@ app.get('/list-repos', (req, res) => {
   fs.readdir(REPO_DIR, (err, files) => {
     if (err) {
       console.error('Failed to list repos:', err);
-      return res.status(500).json({ error: 'Failed to list repositories.' });
+      return res.status(500).send('Failed to list repositories.');
     }
-    res.json(files);
+
+    // Return a human-readable list instead of JSON
+    const repoList = files.length ? files.join('\n') : 'No repositories found.';
+    res.send(repoList);
   });
 });
 
-// Route to delete a repository
 app.delete('/delete-repo/:repoName', (req, res) => {
   const { repoName } = req.params;
   const repoPath = path.join(REPO_DIR, repoName);
 
   if (!fs.existsSync(repoPath)) {
-    return res.status(404).json({ error: `Repository "${repoName}" not found.` });
+    return res.status(404).send(`Repository "${repoName}" not found.`);
   }
 
   fs.rm(repoPath, { recursive: true, force: true }, (err) => {
     if (err) {
       console.error('Failed to delete repo:', err);
-      return res.status(500).json({ error: 'Failed to delete repository.' });
+      return res.status(500).send('Failed to delete repository.');
     }
-    res.json({ message: `Repository "${repoName}" has been deleted.` });
+    res.send(`Repository "${repoName}" has been deleted.`);
   });
 });
 
@@ -101,7 +106,7 @@ app.post('/scan/:repoName', async (req, res) => {
   const repoPath = path.join(REPO_DIR, repoName);
 
   if (!fs.existsSync(repoPath)) {
-    return res.status(404).json({ error: `Repository "${repoName}" not found.` });
+    return res.status(404).send(`Repository "${repoName}" not found.`);
   }
 
   const scanResults = {};
@@ -109,8 +114,8 @@ app.post('/scan/:repoName', async (req, res) => {
   try {
     for (const risk of risks) {
       switch (risk) {
-        case 'Insecure Configuration':
-          scanResults[risk] = await checkInsecureConfiguration(repoPath);
+        case 'Insufficient Credential Hygiene':
+          scanResults[risk] = await checkCredentialHygiene(repoPath);
           break;
         case 'Insufficient IAM':
           scanResults[risk] = await checkIAMIssues(repoPath);
@@ -118,8 +123,8 @@ app.post('/scan/:repoName', async (req, res) => {
         case 'Insecure Secrets Management':
           scanResults[risk] = await checkSecretsManagement(repoPath);
           break;
-        case 'Improper Artifact Integrity':
-          scanResults[risk] = await checkArtifactIntegrity(repoPath);
+        case 'Dependency Chain Abuse':
+          scanResults[risk] = await checkDependencyChainAbuse(repoPath);
           break;
         case 'Insufficient Flow Control Mechanisms':
           scanResults[risk] = await checkFlowControlMechanisms(repoPath);
@@ -148,14 +153,16 @@ app.post('/scan/:repoName', async (req, res) => {
       }
     }
 
-    res.json({
-      repo: repoName,
-      results: scanResults,
-      message: `Scan completed for "${repoName}".`
-    });
+    // Format the results in a readable format
+    let resultText = `Scan completed for repository "${repoName}":\n\n`;
+    for (const [risk, result] of Object.entries(scanResults)) {
+      resultText += `Risk: ${risk}\nResult: ${result}\n\n`;
+    }
+
+    res.send(resultText);
   } catch (err) {
     console.error('Error during scanning:', err);
-    res.status(500).json({ error: `Error scanning repository: ${err}` });
+    res.status(500).send(`Error scanning repository: ${err}`);
   }
 });
 
