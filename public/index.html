@@ -4,6 +4,81 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OWASP CI/CD Risk Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h1, h2 {
+      color: #2c3e50;
+    }
+
+    form {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"] {
+      width: 300px;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 8px 15px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    hr {
+      margin-top: 40px;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 10px 0;
+    }
+
+    li a {
+      text-decoration: none;
+      color: #3498db;
+    }
+
+    li a:hover {
+      text-decoration: underline;
+    }
+
+    li button {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    li button:hover {
+      background-color: #c0392b;
+    }
+  </style>
 </head>
 <body>
 
@@ -27,7 +102,6 @@
   <script>
     document.getElementById('cloneRepoForm').addEventListener('submit', async function(event) {
       event.preventDefault();
-      const form = event.target;
       const repoUrl = document.getElementById('repoUrl').value;
 
       try {
@@ -48,21 +122,21 @@
       }
     });
 
-
     // Fetch the list of repositories and render them
     async function fetchRepoList() {
       try {
         const response = await fetch('/list-repos');
-        const repos = await response.json();
+        const reposText = await response.text();
 
         const repoList = document.getElementById('repoList');
         repoList.innerHTML = '';
 
-        if (repos.length === 0) {
+        if (reposText.trim() === 'No repositories found.') {
           repoList.innerHTML = '<li>No repositories found.</li>';
           return;
         }
 
+        const repos = reposText.trim().split('\n');
         repos.forEach(repo => {
           const li = document.createElement('li');
           const link = document.createElement('a');

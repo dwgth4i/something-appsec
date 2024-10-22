@@ -2,35 +2,75 @@ const { spawn } = require("child_process");
 const fs = require('fs');
 const path = require('path');
 
-const checkVulnerableCodeExecution = async (repoPath) => {
+// CICD-SEC-1: Insufficent Flow Control Mechanism
+async function checkFlowControlMechanisms(repoPath) {
   return new Promise((resolve, reject) => {
-    let output = '';
-    let errorOutput = '';
+      const outputFilePath = path.join(__dirname, 'public', 'checkov_output');
+      const proc = spawn('checkov', ['--directory', repoPath, '--output-file-path', outputFilePath], {
+          shell: true
+      });
 
-    const proc = spawn('bash', ['-c', `semgrep --config "p/config-insecure"`], {cwd: repoPath});
+      let output = '';
+      let errorOutput = '';
 
-    proc.stdout.on('data', (chunk) => {
-      output += chunk.toString();
-    });
+      // Capture stdout
+      proc.stdout.on('data', (chunk) => {
+          output += chunk.toString();
+      });
 
-    proc.stderr.on('data', (chunk) => {
-      errorOutput += chunk.toString();
-    });
+      // Capture stderr
+      proc.stderr.on('data', (chunk) => {
+          errorOutput += chunk.toString();
+          console.error('Error:', chunk.toString());
+      });
 
-    proc.on('error', (err) => {
-      reject(`Failed to run Semgrep: ${err.message}`);
-    });
+      proc.on('error', (err) => {
+          reject(err);
+      });
 
-    proc.on('exit', (code) => {
-      if (code === 0) {
-        resolve(output.trim());
-      } else {
-        reject(`Semgrep encountered an issue: ${errorOutput.trim()}`);
-      }
-    });
+      proc.on('exit', (code) => {
+          if (code === 0) {  
+              const terraformSummary = extractCheckovSummary(output, 'terraform');
+              const githubActionsSummary = extractCheckovSummary(output, 'github_actions');
+
+              if (terraformSummary || githubActionsSummary) {
+                  let result = '';
+
+                  if (terraformSummary) {
+                      result += `Terraform scan results:\n${terraformSummary}\n\n`;
+                  }
+                  if (githubActionsSummary) {
+                      result += `GitHub Actions scan results:\n${githubActionsSummary}\n\n`;
+                  }
+
+                  result += `Details: The saved output file path is: ${outputFilePath}`;
+
+                  resolve(result.trim());
+              } else {
+                  resolve('No scan results found.');
+              }
+          } else {
+              reject(new Error(`Checkov scan exited with code ${code}.\n${errorOutput}`));
+          }
+      });
   });
-};
+}
 
+// Helper function to extract scan summary
+function extractCheckovSummary(output, scanType) {
+  const startMarker = `${scanType} scan results:`;
+  const endMarker = 'Details:';
+
+  const startIndex = output.indexOf(startMarker);
+  const endIndex = output.indexOf(endMarker, startIndex);
+
+  if (startIndex !== -1 && endIndex !== -1) {
+      return output.substring(startIndex, endIndex).trim();
+  } else {
+      // In case the summary isn't found as expected, return null.
+      return null;
+  }
+}
 // CICD-SEC-2: Inadequate Identity and Access Management
 const checkIAMIssues = async (repoPath) => {
   return new Promise((resolve, reject) => {
@@ -140,7 +180,7 @@ const checkPipelineConfiguration = async (repoPath) => {
   });
 };
 
-// CICD-SEC-6: 
+// CICD-SEC-6: Insufficient Credential Hygiene
 async function checkCredentialHygiene(repoPath) {
   const outputFile = path.join(repoPath, 'sec6.txt'); // Specify the output file path
 
