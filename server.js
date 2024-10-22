@@ -10,7 +10,8 @@ const util = require('util');
 const { 
   checkIAMIssues,
   checkCredentialHygiene,
-  checkDependencyChainAbuse
+  checkDependencyChainAbuse,
+  checkFlowControlMechanisms
  } = require('./scanner');
 
 // Initialize Express app

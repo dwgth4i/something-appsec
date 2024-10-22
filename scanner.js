@@ -5,8 +5,9 @@ const path = require('path');
 // CICD-SEC-1: Insufficent Flow Control Mechanism
 async function checkFlowControlMechanisms(repoPath) {
   return new Promise((resolve, reject) => {
-      const outputFilePath = path.join(__dirname, 'public', 'checkov_output');
-      const proc = spawn('checkov', ['--directory', repoPath, '--output-file-path', outputFilePath], {
+      const outputFilePath = "../../public/sec1_check";
+      const proc = spawn('checkov', ['--directory', '.', '--quiet'], {
+          cwd: `${repoPath}`,
           shell: true
       });
 
@@ -16,12 +17,13 @@ async function checkFlowControlMechanisms(repoPath) {
       // Capture stdout
       proc.stdout.on('data', (chunk) => {
           output += chunk.toString();
+          console.log(output);
       });
 
       // Capture stderr
       proc.stderr.on('data', (chunk) => {
           errorOutput += chunk.toString();
-          console.error('Error:', chunk.toString());
+          // console.error('Error:', chunk.toString());
       });
 
       proc.on('error', (err) => {
@@ -29,26 +31,8 @@ async function checkFlowControlMechanisms(repoPath) {
       });
 
       proc.on('exit', (code) => {
-          if (code === 0) {  
-              const terraformSummary = extractCheckovSummary(output, 'terraform');
-              const githubActionsSummary = extractCheckovSummary(output, 'github_actions');
-
-              if (terraformSummary || githubActionsSummary) {
-                  let result = '';
-
-                  if (terraformSummary) {
-                      result += `Terraform scan results:\n${terraformSummary}\n\n`;
-                  }
-                  if (githubActionsSummary) {
-                      result += `GitHub Actions scan results:\n${githubActionsSummary}\n\n`;
-                  }
-
-                  result += `Details: The saved output file path is: ${outputFilePath}`;
-
-                  resolve(result.trim());
-              } else {
-                  resolve('No scan results found.');
-              }
+          if (code === 1) {  
+              resolve(output);
           } else {
               reject(new Error(`Checkov scan exited with code ${code}.\n${errorOutput}`));
           }
@@ -56,21 +40,6 @@ async function checkFlowControlMechanisms(repoPath) {
   });
 }
 
-// Helper function to extract scan summary
-function extractCheckovSummary(output, scanType) {
-  const startMarker = `${scanType} scan results:`;
-  const endMarker = 'Details:';
-
-  const startIndex = output.indexOf(startMarker);
-  const endIndex = output.indexOf(endMarker, startIndex);
-
-  if (startIndex !== -1 && endIndex !== -1) {
-      return output.substring(startIndex, endIndex).trim();
-  } else {
-      // In case the summary isn't found as expected, return null.
-      return null;
-  }
-}
 // CICD-SEC-2: Inadequate Identity and Access Management
 const checkIAMIssues = async (repoPath) => {
   return new Promise((resolve, reject) => {
@@ -228,5 +197,6 @@ async function checkCredentialHygiene(repoPath) {
 module.exports = {
     checkIAMIssues,
     checkCredentialHygiene,
-    checkDependencyChainAbuse
+    checkDependencyChainAbuse,
+    checkFlowControlMechanisms
 };
